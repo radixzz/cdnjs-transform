@@ -1,2 +1,6 @@
 builds_version
 __pycache__
+builds
+tmp
+log
+etag
