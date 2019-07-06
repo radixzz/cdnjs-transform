@@ -1,0 +1,7 @@
+{
+  "output_path": "builds",
+  "versions_file": "builds_version",
+  "lib_path": "../cdnjs/ajax/libs",
+  "lib_url_template": "https://cdnjs.cloudflare.com/ajax/libs/{n}/{v}/{f}",
+  "cdnjs_api": "https://api.cdnjs.com/libraries?fields=name,filename,description,assets"
+}
