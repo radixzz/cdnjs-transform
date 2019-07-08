@@ -2,17 +2,17 @@ import os
 import ijson
 import sys
 from datetime import datetime
-from utils import read_json
-from utils import write_json
-from utils import read_file
-from utils import write_file
-from utils import download_file
-from utils import init_log
-from utils import log_info
-from utils import log_error
-from utils import mkdir_p
+import logging
+import coloredlogs
 
-init_log('transformer.log')
+from .util import read_json
+from .util import write_json
+from .util import read_file
+from .util import write_file
+from .util import download_file
+from .util import mkdir_p
+
+logger = logging.getLogger('transformer')
 
 class Transformer:
   def __init__(self, config_path):
@@ -57,28 +57,31 @@ class Transformer:
         if (prefix, event) == ('results.item.filename', 'string'):
           current['f'] = value
       sys.stdout.write("\n")
-    log_info('Processing done.')
+    logger.info('Transform done.')
     return output
 
-  def get_next_build_version(self):
+  def get_build_version(self):
     version = 0
     if (os.path.isfile(self.versions_file)):
-      version = int(read_file(self.versions_file)) + 1
+      version = int(read_file(self.versions_file))
     return version
 
   def write_build_version(self, version):
     write_file(self.versions_file, version)
 
-  def write_output(self, struct, version):
-    self.write_build_version(str(version))
-    name = "{0}/libraries_{1}.json".format(self.builds_path, version)
+  def write_output(self, struct):
+    name =self.get_current_build_path()
     write_json(name, struct)
     size = "{:.2f} KB".format(os.path.getsize(name) / 1024)
-    log_info('New build created at: {0} ({1})'.format(name, size))
+    logger.info('New build created at: {0} ({1})'.format(name, size))
 
   def init_paths(self):
     mkdir_p(self.builds_path)
     mkdir_p(self.downloads_path)
+
+  def get_current_build_path(self):
+    version = self.get_build_version()
+    return "{0}/libraries_{1}.json".format(self.builds_path, version)
 
   def get_last_download_etag(self):
     if os.path.exists(self.cache_etag_file):
@@ -93,16 +96,23 @@ class Transformer:
   def start(self):
     self.init_paths()
     # Download cdnjs API JSON response to file
+    logger.info('Trying to download: %s' % self.cdnjs_api)
     download_path = '{0}/raw_libraries.json'.format(self.downloads_path)
     last_etag = self.get_last_download_etag()
+    logger.info('Destination path: %s' % download_path)
     new_etag = download_file(self.cdnjs_api, download_path, last_etag)
+    if new_etag is None:
+      logger.info('File already in cache')
     self.set_last_download_etag(new_etag)
     # Transform the file into new JSON struct
     struct = self.transform_cdnjs_file(download_path)
-    version = self.get_next_build_version()
-    self.write_output(struct, version)
+    version = self.get_build_version() + 1
+    self.write_build_version(str(version))
+    self.write_output(struct)
 
 if __name__ == '__main__':
-  log_info('Creating Transformer')
+  coloredlogs.install(level='INFO', logger=logger)
+  logging.basicConfig(filename='transformer.log')
+  logger.info('Creating Transformer')
   transformer = Transformer('config.json')
   transformer.start()
