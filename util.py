@@ -48,18 +48,16 @@ def download_file(url, dest_path, etag):
       req.raise_for_status()
       if (req.headers['etag'] != etag or not os.path.exists(dest_path)):
         result_etag = req.headers['etag']
-        total_length = req.headers.get('content-length')
         total_transfer = 0
-        if total_length is not None:
-          with open(dest_path, 'wb') as f:
-            for chunk in req.iter_content(chunk_size=1024*32):
-              if chunk:
-                total_transfer += len(chunk)
-                size_mb = total_transfer / 1024 / 1024
-                f.write(chunk)
-                sys.stdout.write("\rDownloaded: {:.2f} MB".format(size_mb))
-                sys.stdout.flush()
-          sys.stdout.write("\n")
+        with open(dest_path, 'wb') as f:
+          for chunk in req.iter_content(chunk_size=1024*32):
+            if chunk:
+              total_transfer += len(chunk)
+              size_mb = total_transfer / 1024 / 1024
+              f.write(chunk)
+              sys.stdout.write("\rDownloaded: {:.2f} MB".format(size_mb))
+              sys.stdout.flush()
+        sys.stdout.write("\n")
   except Exception as e:
     raise e
   return result_etag
