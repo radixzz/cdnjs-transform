@@ -1,6 +1,7 @@
 import os
 import ijson
 import sys
+from pathlib import Path
 from datetime import datetime
 import logging
 import coloredlogs
@@ -14,15 +15,18 @@ from .util import mkdir_p
 
 logger = logging.getLogger('transformer')
 
+def abs_path(path):
+  return (Path(__file__).parent / path).resolve()
+
 class Transformer:
   def __init__(self, config_path):
     config = read_json(config_path)
     self.max_versions_per_lib = config['max_versions_per_lib']
     self.lib_url_template = config['lib_url_template']
-    self.cache_etag_file = config['cache_etag_file']
-    self.downloads_path = config['downloads_path']
-    self.versions_file = config['versions_file']
-    self.builds_path = config['builds_path']
+    self.cache_etag_path = abs_path(config['cache_etag_path'])
+    self.downloads_path = abs_path(config['downloads_path'])
+    self.versions_path = abs_path(config['versions_path'])
+    self.builds_path = abs_path(config['builds_path'])
     self.cdnjs_api = config['cdnjs_api']
 
 
@@ -62,12 +66,12 @@ class Transformer:
 
   def get_build_version(self):
     version = 0
-    if (os.path.isfile(self.versions_file)):
-      version = int(read_file(self.versions_file))
+    if (os.path.isfile(self.versions_path)):
+      version = int(read_file(self.versions_path))
     return version
 
   def write_build_version(self, version):
-    write_file(self.versions_file, version)
+    write_file(self.versions_path, version)
 
   def write_output(self, struct):
     name =self.get_current_build_path()
@@ -84,14 +88,14 @@ class Transformer:
     return "{0}/libraries_{1}.json".format(self.builds_path, version)
 
   def get_last_download_etag(self):
-    if os.path.exists(self.cache_etag_file):
-      return read_file(self.cache_etag_file)
+    if os.path.exists(self.cache_etag_path):
+      return read_file(self.cache_etag_path)
     else:
       return ''
 
   def set_last_download_etag(self, etag):
     if type(etag) == str:
-      write_file(self.cache_etag_file, etag)
+      write_file(self.cache_etag_path, etag)
 
   def start(self):
     self.init_paths()
@@ -112,7 +116,7 @@ class Transformer:
 
 if __name__ == '__main__':
   coloredlogs.install(level='INFO', logger=logger)
-  logging.basicConfig(filename='transformer.log')
+  logging.basicConfig(filename=abs_path('transformer.log'))
   logger.info('Creating Transformer')
-  transformer = Transformer('config.json')
+  transformer = Transformer(abs_path('config.json'))
   transformer.start()
