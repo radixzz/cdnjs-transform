@@ -25,51 +25,58 @@ class Transformer:
     self.config = Box(config)
     self.items = []
 
-  def add_item(self, fields):
-    self.items += fields
-    count = len(self.items)
-    sys.stdout.write("\rProcessing Libraries: {0} done".format(count))
-    sys.stdout.flush()
-
   def sort_versions(self, arr, latest_version):
     result = sorted(arr, key=atomize_version, reverse=True)
     result.insert(0, latest_version)
     return list(dict.fromkeys(result))
 
+  def add_item(self, fields):
+    # extract fields to vars (index belongs to fields match)
+    library_name    = fields[0][0]
+    latest_version  = fields[1][0]
+    filename        = fields[2][0]
+    description     = fields[3][0]
+    keywords        = fields[4]
+    versions        = fields[5]
+    # optimize contents
+    trunc_description = util.trunc_string(description, 200)
+    sorted_versions = self.sort_versions(versions, latest_version)
+    comma_versions = ','.join(sorted_versions[:self.config.max_versions_per_lib])
+    comma_keywords = ','.join(keywords[:10])
+    # append stride
+    self.items += [
+      library_name,
+      filename,
+      trunc_description,
+      comma_keywords,
+      comma_versions
+    ]
+    # report completed libraries (stride = 5)
+    count = round(len(self.items) / 5)
+    sys.stdout.write("\rProcessing Libraries: {0} done".format(count))
+    sys.stdout.flush()
+
   def transform_cdnjs_file(self, path):
-    name = ''
-    desc = ''
-    filename = ''
-    versions = []
-    keywords = []
-    latest_version = ''
+    current = {}
+    fields_match = [
+      ('results.item.name', 'string'),
+      ('results.item.version', 'string'),
+      ('results.item.filename', 'string'),
+      ('results.item.description', 'string'),
+      ('results.item.keywords.item', 'string'),
+      ('results.item.assets.item.version', 'string')
+
+    ]
     with open(path, 'r', encoding="utf-8") as file:
       stream = ijson.parse(file)
       for prefix, event, value in stream:
-        if (prefix, event) == ('results.item.name', 'string'):
-          # if new entry found, save pending entry
-          if name:
-            versions = self.sort_versions(versions, latest_version)
-            v_str = ','.join(versions[:self.config.max_versions_per_lib])
-            k_str = ','.join(keywords[:10])
-            self.add_item([name, desc, filename, v_str, k_str])
-            latest_version = ''
-            desc = ''
-            filename = ''
-            name = ''
-          name = value
-          versions = []
-          keywords = []
-        if (prefix, event) == ('results.item.version', 'string'):
-          latest_version = value
-        if (prefix, event) == ('results.item.keywords.item', 'string'):
-          keywords.append(value)
-        if (prefix, event) == ('results.item.assets.item.version', 'string'):
-          versions.append(value)
-        if (prefix, event) == ('results.item.description', 'string'):
-          desc = util.trunc_string(value, 200)
-        if (prefix, event) == ('results.item.filename', 'string'):
-          filename = value
+        for idx, field in enumerate(fields_match):
+          if (prefix, event) == field:
+            if len(current) == len(fields_match):
+              self.add_item(current)
+              current = {}
+            if idx not in current: current[idx] = []
+            current[idx].append(value)
       sys.stdout.write("\n")
     logger.info('Transform done.')
 
@@ -77,6 +84,7 @@ class Transformer:
     return {
       'created_at': str(datetime.today()),
       'url_template': self.config.lib_url_template,
+      'stride_format': ['name', 'filename', 'description', 'keywords', 'versions'],
       'items': self.items,
     }
 
