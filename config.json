@@ -1,9 +1,0 @@
-{
-  "builds_path": "builds",
-  "downloads_path": "tmp",
-  "versions_file": "builds_version",
-  "cache_etag_file": "etag",
-  "lib_url_template": "https://cdnjs.cloudflare.com/ajax/libs/{n}/{v}/{f}",
-  "cdnjs_api": "https://api.cdnjs.com/libraries?fields=name,filename,description,assets",
-  "max_versions_per_lib": 10
-}

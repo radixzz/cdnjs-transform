@@ -41,6 +41,9 @@ def mkdir_p(path):
         else:
             raise
 
+def trunc_string(str, limit):
+  return (str[:limit] + '..') if len(str) > limit else str
+
 def download_file(url, dest_path, etag):
   result_etag = None
   try:
