@@ -65,14 +65,14 @@ class Transformer:
       ('results.item.description', 'string'),
       ('results.item.keywords.item', 'string'),
       ('results.item.assets.item.version', 'string')
-
     ]
     with open(path, 'r', encoding="utf-8") as file:
       stream = ijson.parse(file)
       for prefix, event, value in stream:
         for idx, field in enumerate(fields_match):
           if (prefix, event) == field:
-            if len(current) == len(fields_match):
+            # if current match is the name and current has all the fields. Commit library
+            if (prefix, event) == fields_match[0] and len(current) == len(fields_match):
               self.add_item(current)
               current = {}
             if idx not in current: current[idx] = []
